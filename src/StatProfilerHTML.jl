@@ -1,17 +1,10 @@
 module StatProfilerHTML
 
-export statprofilehtml
+export statprofilehtml, @profilehtml
 
-if VERSION >= v"0.7-"
-    using Profile
-    using Base.StackTraces: StackFrame
-    with_value(f, x) = x !== nothing && f(x)
-else
-    using Compat: @info
-    using Base.Profile
-    with_value(f, x) = !isnull(x) && f(get(x))
-    stdout = STDOUT
-end
+using Profile
+using Base.StackTraces: StackFrame
+with_value(f, x) = x !== nothing && f(x)
 
 const basepath           = dirname(@__DIR__)
 const sharepath          = joinpath(basepath, "share")
@@ -54,6 +47,20 @@ function statprofilehtml(data::Array{UInt,1} = UInt[],litrace::Dict{UInt,Array{S
     end
 
     @info "Wrote profiling output to file://$(pwd())/statprof/index.html"
+end
+
+macro profilehtml(expr)
+    quote
+        Profile.clear()
+        res = try
+            @profile $(esc(expr))
+        catch ex
+            ex isa InterruptException || rethrow(ex)
+            @info "You interrupted the computation; generating profiling view for the computation so far."
+        end
+        statprofilehtml()
+        res
+    end
 end
 
 end
